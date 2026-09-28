@@ -1,0 +1,102 @@
+{
+    "version": 1,
+    "author": "Smart Lobster Farm",
+    "editor": "wokwi",
+    "parts": [
+      {
+        "type": "wokwi-esp32-devkit-v1",
+        "id": "esp32",
+        "top": 0,
+        "left": 0,
+        "attrs": {}
+      },
+      {
+        "type": "wokwi-potentiometer",
+        "id": "phPot",
+        "top": -10,
+        "left": 330,
+        "attrs": {
+          "value": "512"
+        }
+      },
+      {
+        "type": "wokwi-potentiometer",
+        "id": "tdsPot",
+        "top": 120,
+        "left": 330,
+        "attrs": {
+          "value": "384"
+        }
+      },
+      {
+        "type": "wokwi-ds18b20",
+        "id": "tempSensor",
+        "top": 260,
+        "left": 330,
+        "attrs": {
+          "temperature": "28"
+        }
+      }
+    ],
+    "connections": [
+      [
+        "phPot:SIG",
+        "esp32:D34",
+        "green",
+        []
+      ],
+      [
+        "phPot:VCC",
+        "esp32:3V3",
+        "red",
+        []
+      ],
+      [
+        "phPot:GND",
+        "esp32:GND.1",
+        "black",
+        []
+      ],
+  
+      [
+        "tdsPot:SIG",
+        "esp32:D35",
+        "green",
+        []
+      ],
+      [
+        "tdsPot:VCC",
+        "esp32:3V3",
+        "red",
+        []
+      ],
+      [
+        "tdsPot:GND",
+        "esp32:GND.1",
+        "black",
+        []
+      ],
+  
+      [
+        "tempSensor:DQ",
+        "esp32:D4",
+        "green",
+        []
+      ],
+      [
+        "tempSensor:VCC",
+        "esp32:3V3",
+        "red",
+        []
+      ],
+      [
+        "tempSensor:GND",
+        "esp32:GND.1",
+        "black",
+        []
+      ]
+    ],
+    "serialMonitor": {
+      "display": "always"
+    }
+  }
