@@ -3,14 +3,17 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <math.h>
 #include <time.h>
 
 #include <DallasTemperature.h>
 #include <OneWire.h>
 
-#define PH_PIN 34
-#define TDS_PIN 35
-#define TEMP_PIN 4
+#include "alert_manager.h"
+#include "display_manager.h"
+#include "pin_config.h"
+#include "sensor_data.h"
+#include "water_status.h"
 
 const unsigned long SENSOR_INTERVAL_MS = 10000UL;
 const unsigned long LATEST_INTERVAL_MS = 30000UL;
@@ -25,14 +28,8 @@ const char *FIREBASE_BASE_URL =
 const char *FIREBASE_LATEST =
     "https://smart-lobster-oase-pps-default-rtdb.asia-southeast1.firebasedatabase.app/devices/oase-01/latest.json";
 
-OneWire oneWire(TEMP_PIN);
+OneWire oneWire(PinConfig::PIN_DS18B20);
 DallasTemperature tempSensor(&oneWire);
-
-struct SensorReading {
-  float ph = 0.0F;
-  float tds = 0.0F;
-  float temperature = 0.0F;
-};
 
 struct RawAccumulator {
   double phSum = 0.0;
@@ -102,6 +99,10 @@ struct HourlyAccumulator {
 SensorReading latestReading;
 RawAccumulator rawAccumulator;
 HourlyAccumulator hourlyAccumulator;
+WaterEvaluation latestEvaluation;
+WaterStatusMonitor statusMonitor;
+AlertManager alertManager;
+DisplayManager displayManager;
 
 bool hasSensorReading = false;
 bool ntpWaitReported = false;
@@ -124,14 +125,14 @@ void connectWiFi() {
 }
 
 float readPH() {
-  const int raw = analogRead(PH_PIN);
+  const int raw = analogRead(PinConfig::PIN_PH);
 
   // Simulasi existing: ADC 0-4095 -> pH 6-9.
   return 6.0F + (static_cast<float>(raw) / 4095.0F) * 3.0F;
 }
 
 float readTDS() {
-  const int raw = analogRead(TDS_PIN);
+  const int raw = analogRead(PinConfig::PIN_TDS);
 
   // Simulasi existing: ADC 0-4095 -> 200-600 ppm.
   return 200.0F + (static_cast<float>(raw) / 4095.0F) * 400.0F;
@@ -143,16 +144,48 @@ float readTemperature() {
 }
 
 void readSensors() {
-  latestReading.ph = readPH();
-  latestReading.tds = readTDS();
-  latestReading.temperature = readTemperature();
-  hasSensorReading = true;
-  rawAccumulator.add(latestReading);
+  SensorReading reading;
+  reading.ph = readPH();
+  reading.tds = readTDS();
+  reading.temperature = readTemperature();
+  reading.phValid = isfinite(reading.ph);
+  reading.tdsValid = isfinite(reading.tds);
+  reading.temperatureValid =
+      isfinite(reading.temperature) &&
+      reading.temperature != DEVICE_DISCONNECTED_C &&
+      reading.temperature >= -55.0F && reading.temperature <= 125.0F;
 
-  Serial.println("[SENSOR]");
-  Serial.printf("pH=%.2f\n", latestReading.ph);
-  Serial.printf("TDS=%.2f\n", latestReading.tds);
-  Serial.printf("Temp=%.2f\n", latestReading.temperature);
+  latestReading = reading;
+  hasSensorReading = true;
+  if (latestReading.allValid()) {
+    rawAccumulator.add(latestReading);
+  }
+
+  const WaterStatus previousSystemStatus = latestEvaluation.systemStatus;
+  latestEvaluation = statusMonitor.update(latestReading);
+
+  Serial.print("[SENSOR] pH=");
+  latestReading.phValid ? Serial.printf("%.2f", latestReading.ph)
+                        : Serial.print("ERR");
+  Serial.print(" TDS=");
+  latestReading.tdsValid ? Serial.printf("%.1f", latestReading.tds)
+                         : Serial.print("ERR");
+  Serial.print(" TEMP=");
+  latestReading.temperatureValid
+      ? Serial.printf("%.1f\n", latestReading.temperature)
+      : Serial.println("ERR");
+  Serial.printf("[STATUS] PH=%s TDS=%s TEMP=%s SYSTEM=%s\n",
+                waterStatusName(latestEvaluation.phStatus),
+                waterStatusName(latestEvaluation.tdsStatus),
+                waterStatusName(latestEvaluation.temperatureStatus),
+                waterStatusName(latestEvaluation.systemStatus));
+
+  if (latestEvaluation.systemStatus != previousSystemStatus) {
+    Serial.printf("[ALERT] SYSTEM %s -> %s\n",
+                  waterStatusName(previousSystemStatus),
+                  waterStatusName(latestEvaluation.systemStatus));
+  }
+  alertManager.setStatus(latestEvaluation.systemStatus, millis());
 }
 
 bool isClockValid() {
@@ -360,6 +393,8 @@ void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
   tempSensor.begin();
+  alertManager.begin();
+  displayManager.begin();
 
   connectWiFi();
   configTime(GMT_OFFSET_SECONDS, DAYLIGHT_OFFSET_SECONDS, "pool.ntp.org",
@@ -374,6 +409,11 @@ void setup() {
 void loop() {
   const unsigned long now = millis();
 
+  alertManager.update(now);
+  if (hasSensorReading) {
+    displayManager.update(latestReading, latestEvaluation, now);
+  }
+
   // Simpan window lama sebelum sample pada batas 5 menit masuk ke window baru.
   handleRawHistorySchedule(now);
 
@@ -382,7 +422,8 @@ void loop() {
     readSensors();
   }
 
-  if (hasSensorReading && now - lastLatestMs >= LATEST_INTERVAL_MS) {
+  if (hasSensorReading && latestReading.allValid() &&
+      now - lastLatestMs >= LATEST_INTERVAL_MS) {
     lastLatestMs = now;
     updateLatest();
   }

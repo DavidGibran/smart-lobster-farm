@@ -1,102 +1,102 @@
 {
-    "version": 1,
-    "author": "Smart Lobster Farm",
-    "editor": "wokwi",
-    "parts": [
-      {
-        "type": "wokwi-esp32-devkit-v1",
-        "id": "esp32",
-        "top": 0,
-        "left": 0,
-        "attrs": {}
-      },
-      {
-        "type": "wokwi-potentiometer",
-        "id": "phPot",
-        "top": -10,
-        "left": 330,
-        "attrs": {
-          "value": "512"
-        }
-      },
-      {
-        "type": "wokwi-potentiometer",
-        "id": "tdsPot",
-        "top": 120,
-        "left": 330,
-        "attrs": {
-          "value": "384"
-        }
-      },
-      {
-        "type": "wokwi-ds18b20",
-        "id": "tempSensor",
-        "top": 260,
-        "left": 330,
-        "attrs": {
-          "temperature": "28"
-        }
-      }
-    ],
-    "connections": [
-      [
-        "phPot:SIG",
-        "esp32:D34",
-        "green",
-        []
-      ],
-      [
-        "phPot:VCC",
-        "esp32:3V3",
-        "red",
-        []
-      ],
-      [
-        "phPot:GND",
-        "esp32:GND.1",
-        "black",
-        []
-      ],
-  
-      [
-        "tdsPot:SIG",
-        "esp32:D35",
-        "green",
-        []
-      ],
-      [
-        "tdsPot:VCC",
-        "esp32:3V3",
-        "red",
-        []
-      ],
-      [
-        "tdsPot:GND",
-        "esp32:GND.1",
-        "black",
-        []
-      ],
-  
-      [
-        "tempSensor:DQ",
-        "esp32:D4",
-        "green",
-        []
-      ],
-      [
-        "tempSensor:VCC",
-        "esp32:3V3",
-        "red",
-        []
-      ],
-      [
-        "tempSensor:GND",
-        "esp32:GND.1",
-        "black",
-        []
-      ]
-    ],
-    "serialMonitor": {
-      "display": "always"
+  "version": 1,
+  "author": "Smart Lobster Farm",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp32",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "phPot",
+      "top": -90,
+      "left": 330,
+      "attrs": { "value": "512" }
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "tdsPot",
+      "top": 40,
+      "left": 330,
+      "attrs": { "value": "384" }
+    },
+    {
+      "type": "wokwi-ds18b20",
+      "id": "tempSensor",
+      "top": 180,
+      "left": 330,
+      "attrs": { "temperature": "28" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "tempPullup",
+      "top": 207,
+      "left": 260,
+      "rotate": 90,
+      "attrs": { "value": "4700" }
+    },
+    {
+      "type": "wokwi-ssd1306",
+      "id": "display",
+      "top": -100,
+      "left": -260,
+      "attrs": { "i2cAddress": "0x3c" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "statusLed",
+      "top": 130,
+      "left": -210,
+      "attrs": { "color": "red", "label": "SYSTEM" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "ledResistor",
+      "top": 178,
+      "left": -160,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": 270,
+      "left": -220,
+      "attrs": { "volume": "0.1" }
     }
+  ],
+  "connections": [
+    [ "phPot:SIG", "esp32:D34", "green", [] ],
+    [ "phPot:VCC", "esp32:3V3", "red", [] ],
+    [ "phPot:GND", "esp32:GND.1", "black", [] ],
+
+    [ "tdsPot:SIG", "esp32:D35", "green", [] ],
+    [ "tdsPot:VCC", "esp32:3V3", "red", [] ],
+    [ "tdsPot:GND", "esp32:GND.1", "black", [] ],
+
+    [ "tempSensor:DQ", "esp32:D4", "green", [] ],
+    [ "tempSensor:DQ", "tempPullup:1", "green", [] ],
+    [ "tempPullup:2", "esp32:3V3", "red", [] ],
+    [ "tempSensor:VCC", "esp32:3V3", "red", [] ],
+    [ "tempSensor:GND", "esp32:GND.1", "black", [] ],
+
+    [ "display:SDA", "esp32:D21", "green", [] ],
+    [ "display:SCL", "esp32:D22", "green", [] ],
+    [ "display:VCC", "esp32:3V3", "red", [] ],
+    [ "display:GND", "esp32:GND.2", "black", [] ],
+
+    [ "esp32:D18", "statusLed:A", "green", [] ],
+    [ "statusLed:C", "ledResistor:1", "black", [] ],
+    [ "ledResistor:2", "esp32:GND.2", "black", [] ],
+
+    [ "esp32:D19", "buzzer:1", "green", [] ],
+    [ "buzzer:2", "esp32:GND.2", "black", [] ]
+  ],
+  "serialMonitor": {
+    "display": "always"
   }
+}
